@@ -7,8 +7,12 @@ Webcam will be used for object detection (human). 3d Printing will be used to de
 Phases:
 
 Phase 1: Set up RPi and webcam to be able to detect a person in the camera image.
+
 Phase 2: Add motor to rotate camera to follow person as they walk. Will need to create some sort of mounting to couple motor and webcam.
+
 Phase 3: Assemble drive train and connect to rpi
+
 Phase 4: Design and implement software for following human (following distance, speed, etc). May need to implement path finding algos around objects in home based on design (tbd). 
+
 Phase 5: Put it all together
 
