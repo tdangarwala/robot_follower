@@ -23,4 +23,6 @@ public:
     Position getPersonOffset(Mat& frame, Rect& personBox);
 
     std::pair<Mat, Position> processFrame(Mat& frame);
+
+    double getDistance(const Rect& box) const;
 };
