@@ -15,4 +15,4 @@ CalibrateCamera.o: CalibrateCamera.cpp CalibrateCamera.h
 	$(CC) $(CFLAGS) $(OPENCV_CFLAGS) -c CalibrateCamera.cpp
 
 clean:
-	rm *.o $(TARGET)
+	rm -f *.o $(TARGET)
