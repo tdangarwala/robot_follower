@@ -5,6 +5,7 @@
 
 using namespace cv;
 
+
 int main(){
 
     HOGDescriptor hog;
@@ -15,11 +16,12 @@ int main(){
         std::cout << "Error opening camera" << std::endl;
         return -1;
     }
-
-    PersonDetector detector(320);
-    Mat frame;
     
+    PersonDetector detector;
+    Mat frame;
+
     while(true){
+        
         cap >> frame;
         if(frame.empty()){
             std::cout << "Error reading frame" << std::endl; 
@@ -27,13 +29,14 @@ int main(){
 
         auto [processedFrame, direction] = detector.processFrame(frame);
 
-
         imshow("Camera Feed", processedFrame);
         
         if(waitKey(30) >= 0){
             break;
         }
+
     }
+
 
     cap.release();
     destroyAllWindows();

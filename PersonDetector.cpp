@@ -4,13 +4,14 @@
 using namespace cv;
 
 
-PersonDetector::PersonDetector(int width) :  frameWidth(width), scale(1.05),
-    winStride(4,4), padding(8,8){
+PersonDetector::PersonDetector() : scale(1.05),
+    winStride(8,8), padding(8,8), emaDist(-1){
     hog.setSVMDetector(HOGDescriptor::getDefaultPeopleDetector());
 }
 
 std::vector<Rect> PersonDetector::detectPeople(Mat& frame){
     Mat resized;
+    int frameWidth = 320;
     resize(frame, resized, Size(frameWidth, frame.rows * frameWidth / frame.cols));
 
     Mat gray;
@@ -68,25 +69,41 @@ std::pair<Mat, Position> PersonDetector::processFrame(Mat& frame) {
         circle(frame, center, 4, Scalar(0,0,255), -1);
 
         putText(frame, std::to_string(realDist), Point(largestBox.x, largestBox.y -10),
-                FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0,255,0),2);
+                FONT_HERSHEY_SIMPLEX, 1.5, Scalar(0,255,0),2);
 
+    }
+    else{
+        emaDist = -1;
     }
 
     return {frame, personOffset};
 }
 
-double PersonDetector::getDistance(const Rect& box) const{
-    double f = 4.0; //focal length of Logitect C270 camera, will need to change for others based on calibration process
+double PersonDetector::getDistance(const Rect& box) {
+    double f = 4.0 *1280 / 3.58; //focal length of Logitect C270 camera, will need to change for others based on calibration process
 
     double pixelWidth = box.width;
 
-    double realWidth = 0.38; //assume average width of person is like 35-40 cm
+    double realWidth = 0.53; //assume average width of person is like 21 in 
 
 
     //similar triangles math
 
-    double distance = (f/1000 * realWidth) / pixelWidth;
+    double distance = (f * realWidth) / pixelWidth;
 
-    return distance;
+    return filterDistance(distance);
 
+}
+
+double PersonDetector::filterDistance(double newDistance) {
+    double alpha = 0.3;
+
+    if(emaDist < 0) {
+        emaDist = newDistance;
+    }
+    else{
+        emaDist = alpha * newDistance + (1-alpha) * emaDist;
+    }
+
+    return emaDist;
 }

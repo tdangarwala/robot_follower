@@ -11,12 +11,12 @@ struct Position {
 class PersonDetector {
 private:
     HOGDescriptor hog;
-    int frameWidth;
     double scale;
     Size winStride;
     Size padding;
+    double emaDist;
 public:
-    PersonDetector(int width);
+    PersonDetector();
 
     std::vector<Rect> detectPeople(Mat& frame);
 
@@ -24,5 +24,9 @@ public:
 
     std::pair<Mat, Position> processFrame(Mat& frame);
 
-    double getDistance(const Rect& box) const;
+    double getDistance(const Rect& box);
+
+    double filterDistance(double newDistance);
+
+    void resetEmaDist();
 };
