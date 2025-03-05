@@ -10,19 +10,24 @@ struct Position {
 
 class PersonDetector {
 private:
-    HOGDescriptor hog;
-    double scale;
-    Size winStride;
-    Size padding;
+    //Point prevCenter;
+    std::string mPath;
+    std::string cPath;
+    Size blobSize;
+    Scalar meanVal;
+    dnn::Net net;
+    Mat blob;
+    Mat output;
+    
     double emaDist;
 public:
-    PersonDetector();
+    PersonDetector(std::string modelPath, std::string configPath);
 
-    std::vector<Rect> detectPeople(Mat& frame);
+    Rect detectPeople(Mat& frame);
 
     Position getPersonOffset(Mat& frame, Rect& personBox);
 
-    std::pair<Mat, Position> processFrame(Mat& frame);
+    std::pair<Rect, Position> processFrame(Mat& frame);
 
     double getDistance(const Rect& box);
 

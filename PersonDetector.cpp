@@ -4,34 +4,55 @@
 using namespace cv;
 
 
-PersonDetector::PersonDetector() : scale(1.05),
-    winStride(8,8), padding(8,8), emaDist(-1){
-    hog.setSVMDetector(HOGDescriptor::getDefaultPeopleDetector());
+PersonDetector::PersonDetector(std::string modelPath, std::string configPath) : 
+    mPath(modelPath), cPath(configPath){
+    blobSize = Size(300, 300);
+    meanVal = Scalar(127.5, 127.5, 127.5);
+    net = dnn::readNetFromTensorflow(mPath, cPath);
+    net.setPreferableBackend(dnn::DNN_BACKEND_OPENCV);
+    net.setPreferableTarget(dnn::DNN_TARGET_CPU); 
 }
 
-std::vector<Rect> PersonDetector::detectPeople(Mat& frame){
-    Mat resized;
-    int frameWidth = 320;
-    resize(frame, resized, Size(frameWidth, frame.rows * frameWidth / frame.cols));
+Rect PersonDetector::detectPeople(Mat& frame){
+    dnn::blobFromImage(frame, blob, 1.0, blobSize, meanVal, true, false);
+    net.setInput(blob);
+    net.forward(output);
+    Mat detections(output.size[2], output.size[3], CV_32F, output.ptr<float>());
 
-    Mat gray;
-    cvtColor(resized, gray, COLOR_BGR2GRAY);
+    std::vector<Rect> detected;
 
-    std::vector<Rect> boxes;
-    //std::vector<double> weights;
-    hog.detectMultiScale(gray, boxes, 0, winStride, padding, scale, 1.5);
-
-    if(!boxes.empty()){
-        float scaleFactor = static_cast<float>(frame.cols) / frameWidth;
-        for(auto& box : boxes){
-            box.x *= scaleFactor;
-            box.y *= scaleFactor;
-            box.width *= scaleFactor;
-            box.height *= scaleFactor;
+    for (int i = 0; i < detections.rows; i++) {
+        float confidence = detections.at<float>(i, 2);
+        if (confidence > 0.5) {  // Set higher threshold to filter noise
+            int class_id = static_cast<int>(detections.at<float>(i, 1));
+            if (class_id == 1) {  // Class 1 = Person
+                int left = static_cast<int>(detections.at<float>(i, 3) * frame.cols);
+                int top = static_cast<int>(detections.at<float>(i, 4) * frame.rows);
+                int right = static_cast<int>(detections.at<float>(i, 5) * frame.cols);
+                int bottom = static_cast<int>(detections.at<float>(i, 6) * frame.rows);
+                rectangle(frame, Point(left, top), Point(right, bottom), Scalar(0, 255, 0), 2);
+                detected.emplace_back(Rect(left, top, right - left, bottom - top));
+            }
         }
     }
 
-    return boxes;
+    if(detected.size() == 1){
+        return detected[0];
+    }
+
+    if(detected.empty()){
+        return Rect();
+    }
+
+    // Rect bestMatch;
+    // double minDist = std::numeric_limits<double>::max();
+
+    // for(auto& b : detected){
+    //     Point tempC
+    // }
+
+    return Rect();
+
 }
 
 Position PersonDetector::getPersonOffset(Mat& frame, Rect& personBox){
@@ -49,26 +70,19 @@ Position PersonDetector::getPersonOffset(Mat& frame, Rect& personBox){
 
 }
 
-std::pair<Mat, Position> PersonDetector::processFrame(Mat& frame) {
-    auto boxes = detectPeople(frame);
+std::pair<Rect, Position> PersonDetector::processFrame(Mat& frame) {
+    auto box = detectPeople(frame);
 
     Position personOffset;
 
-    if(!boxes.empty()){
-        auto largestBox = *std::max_element(boxes.begin(), boxes.end(), 
-        [](const Rect& a, const Rect& b){
-            return a.area() < b.area();
-        });
+    if(box.area()>0){
 
-        personOffset = getPersonOffset(frame, largestBox);
-        double realDist = getDistance(largestBox);
+        personOffset = getPersonOffset(frame, box);
+        double realDist = getDistance(box);
 
-        rectangle(frame, largestBox, Scalar(0,255,0), 2);
-        Point center(largestBox.x + largestBox.width/2,
-            largestBox.y + largestBox.height/2);
-        circle(frame, center, 4, Scalar(0,0,255), -1);
-
-        putText(frame, std::to_string(realDist), Point(largestBox.x, largestBox.y -10),
+        rectangle(frame, box, Scalar(0,255,0), 2);
+        
+        putText(frame, std::to_string(realDist), Point(box.x, box.y -10),
                 FONT_HERSHEY_SIMPLEX, 1.5, Scalar(0,255,0),2);
 
     }
@@ -76,11 +90,11 @@ std::pair<Mat, Position> PersonDetector::processFrame(Mat& frame) {
         emaDist = -1;
     }
 
-    return {frame, personOffset};
+    return {box, personOffset};
 }
 
 double PersonDetector::getDistance(const Rect& box) {
-    double f = 4.0 *1280 / 3.58; //focal length of Logitect C270 camera, will need to change for others based on calibration process
+    double f = 4.0*1280 / 3.58; //focal length of Logitect C270 camera, will need to change for others based on calibration process
 
     double pixelWidth = box.width;
 
