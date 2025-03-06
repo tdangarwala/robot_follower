@@ -31,20 +31,34 @@ int main(){
     std::cout << "Camera initialized successfully" << std::endl;
     
     Mat frame;
-
-    cap >> frame;
-    if(frame.empty()){
-        std::cout << "Error reading frame" << std::endl; 
-    }
-
     Rect bounding_box;
     Position direction;
-    std::tie(bounding_box, direction) = detector.processFrame(frame);
-    std::cout << bounding_box.height << " " << bounding_box.width << std::endl;
+    bool valid_detection = false;
 
+    while(!valid_detection){
+        cap >> frame;
+        if(frame.empty()){
+            std::cout << "Error reading frame" << std::endl; 
+        }
+
+        std::tie(bounding_box, direction) = detector.processFrame(frame);
+        if (bounding_box.width > 0 && bounding_box.height > 0) {
+            std::cout << "Person detected with bounding box: " << bounding_box << std::endl;
+            valid_detection = true;
+            continue;
+        } else {
+            std::cout << "No person detected. Retry " << std::endl;
+        
+            imshow("Camera Feed", frame);
+            waitKey(100);  // Short delay between retries
+        }
+    }
+    
     PersonTracker pt(frame, bounding_box);
 
     pt.detectFeatures();
+
+    int count = 0;
 
     while(true){
 
@@ -56,22 +70,27 @@ int main(){
 
         std::vector<Point2f> tracked_points = pt.calculateLK(frame);
 
-        std::cout << tracked_points.size() << std::endl;
+        std::cout << tracked_points.size() << " " << count << std::endl;
         if(tracked_points.size() < 10){
             std::cout << "Resetting person detection" << std::endl;
             Rect newBoundingBox;
             Position newDirection;
             std::tie(newBoundingBox, newDirection) = detector.processFrame(frame);
-            bounding_box = newBoundingBox;
-            pt.updateBbox(bounding_box);
-            pt.detectFeatures();
+
+            if (newBoundingBox.width > 0 && newBoundingBox.height > 0) {
+                bounding_box = newBoundingBox;
+                pt.updateBbox(bounding_box);
+                pt.detectFeatures();
+            }
         }
-        
+        count++;
         imshow("Camera Feed", frame);
         
         if(waitKey(30) >= 0){
             break;
         }
+
+        
 
     }
 
