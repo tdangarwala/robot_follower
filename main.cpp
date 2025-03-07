@@ -13,10 +13,11 @@ int main(){
 
     std::string modelPath = "/home/tapan/projects/robot_follower/models/ssd_mobilenet_v2_coco_2018_03_29/frozen_inference_graph.pb";
     std::string configPath = "/home/tapan/projects/robot_follower/models/ssd_mobilenet_v2_coco_2018_03_29.pbtxt";
-
-    PersonDetector detector(modelPath,configPath);
-
-                                
+    
+    KalmanDistanceFilter distance_filter(0.1,0.1);
+    PersonDetector detector(modelPath,configPath, distance_filter);
+    
+                            
     VideoCapture cap(0);
 
     if(!cap.isOpened()){
@@ -31,8 +32,7 @@ int main(){
     std::cout << "Camera initialized successfully" << std::endl;
     
     Mat frame;
-    Rect bounding_box;
-    Position direction;
+    DetectionOutput perception_output;
     bool valid_detection = false;
 
     while(!valid_detection){
@@ -41,9 +41,9 @@ int main(){
             std::cout << "Error reading frame" << std::endl; 
         }
 
-        std::tie(bounding_box, direction) = detector.processFrame(frame);
-        if (bounding_box.width > 0 && bounding_box.height > 0) {
-            std::cout << "Person detected with bounding box: " << bounding_box << std::endl;
+        perception_output = detector.processFrame(frame);
+        if (perception_output.boundingBox.width > 0 && perception_output.boundingBox.height > 0) {
+            distance_filter.init(perception_output.distance);
             valid_detection = true;
             continue;
         } else {
@@ -54,7 +54,7 @@ int main(){
         }
     }
     
-    PersonTracker pt(frame, bounding_box);
+    PersonTracker pt(frame, perception_output.boundingBox);
 
     pt.detectFeatures();
 
@@ -73,16 +73,19 @@ int main(){
         std::cout << tracked_points.size() << " " << count << std::endl;
         if(tracked_points.size() < 10){
             std::cout << "Resetting person detection" << std::endl;
-            Rect newBoundingBox;
-            Position newDirection;
-            std::tie(newBoundingBox, newDirection) = detector.processFrame(frame);
+            DetectionOutput newDetection;
+            newDetection = detector.processFrame(frame);
 
-            if (newBoundingBox.width > 0 && newBoundingBox.height > 0) {
-                bounding_box = newBoundingBox;
-                pt.updateBbox(bounding_box);
+            if (newDetection.boundingBox.width > 0 && newDetection.boundingBox.height > 0) {
+                perception_output.boundingBox = newDetection.boundingBox;
+                distance_filter.init(perception_output.distance);
+                pt.updateBbox(perception_output.boundingBox);
                 pt.detectFeatures();
+                continue;
             }
         }
+
+        perception_output.distance = distance_filter.process(perception_output.distance);
         count++;
         imshow("Camera Feed", frame);
         

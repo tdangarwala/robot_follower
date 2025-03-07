@@ -12,7 +12,7 @@ void PersonTracker::detectFeatures(){
     features.clear();
 
     Mat roi = prev_gray(bounding_box);
-    goodFeaturesToTrack(prev_gray, features, 100, 0.3, 7);
+    goodFeaturesToTrack(roi, features, 100, 0.3, 7);
 }
 
 void PersonTracker::updateBbox(Rect new_bounding_box){

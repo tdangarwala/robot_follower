@@ -4,10 +4,11 @@
 using namespace cv;
 
 
-PersonDetector::PersonDetector(std::string modelPath, std::string configPath) : 
-    mPath(modelPath), cPath(configPath){
+PersonDetector::PersonDetector(std::string modelPath, std::string configPath, KalmanDistanceFilter dkf) : 
+    mPath(modelPath), cPath(configPath), distanceFilter(dkf){
     blobSize = Size(300, 300);
     meanVal = Scalar(127.5, 127.5, 127.5);
+    
     net = dnn::readNetFromTensorflow(mPath, cPath);
     net.setPreferableBackend(dnn::DNN_BACKEND_OPENCV);
     net.setPreferableTarget(dnn::DNN_TARGET_CPU); 
@@ -70,30 +71,35 @@ Position PersonDetector::getPersonOffset(Mat& frame, Rect& personBox){
 
 }
 
-std::pair<Rect, Position> PersonDetector::processFrame(Mat& frame) {
+DetectionOutput PersonDetector::processFrame(Mat& frame) {
     auto box = detectPeople(frame);
 
     Position personOffset;
 
-    if(box.area()>0){
+    personOffset = getPersonOffset(frame, box);
+    double realDist = getDistance(box);
 
-        personOffset = getPersonOffset(frame, box);
-        double realDist = getDistance(box);
+    rectangle(frame, box, Scalar(0,255,0), 2);
+    
+    putText(frame, std::to_string(realDist), Point(box.x, box.y -10),
+            FONT_HERSHEY_SIMPLEX, 1.5, Scalar(0,255,0),2);
 
-        rectangle(frame, box, Scalar(0,255,0), 2);
-        
-        putText(frame, std::to_string(realDist), Point(box.x, box.y -10),
-                FONT_HERSHEY_SIMPLEX, 1.5, Scalar(0,255,0),2);
 
-    }
-    else{
-        emaDist = -1;
-    }
+    DetectionOutput res = {personOffset, realDist, box};
 
-    return {box, personOffset};
+    return res;
 }
 
 double PersonDetector::getDistance(const Rect& box) {
+
+    if(box.width <= 0){
+        if(distanceFilter.isInitialized()){
+            return distanceFilter.process(0,false);
+        }
+        else{
+            return -1;
+        }
+    }
     double f = 4.0*1280 / 3.58; //focal length of Logitect C270 camera, will need to change for others based on calibration process
 
     double pixelWidth = box.width;
@@ -105,19 +111,7 @@ double PersonDetector::getDistance(const Rect& box) {
 
     double distance = (f * realWidth) / pixelWidth;
 
-    return filterDistance(distance);
+    return distanceFilter.process(distance);
 
 }
 
-double PersonDetector::filterDistance(double newDistance) {
-    double alpha = 0.3;
-
-    if(emaDist < 0) {
-        emaDist = newDistance;
-    }
-    else{
-        emaDist = alpha * newDistance + (1-alpha) * emaDist;
-    }
-
-    return emaDist;
-}
