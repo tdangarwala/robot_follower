@@ -42,6 +42,7 @@ int main(){
         }
 
         perception_output = detector.processFrame(frame);
+        std::cout << perception_output.boundingBox.width << " " << perception_output.boundingBox.height << std::endl;
         if (perception_output.boundingBox.width > 0 && perception_output.boundingBox.height > 0) {
             distance_filter.init(perception_output.distance);
             valid_detection = true;
@@ -69,8 +70,10 @@ int main(){
         }
 
         std::vector<Point2f> tracked_points = pt.calculateLK(frame);
-
         std::cout << tracked_points.size() << " " << count << std::endl;
+
+        bool newMeasurement = false;
+        double measuredDistance = -1;
         if(tracked_points.size() < 10){
             std::cout << "Resetting person detection" << std::endl;
             DetectionOutput newDetection;
@@ -78,14 +81,25 @@ int main(){
 
             if (newDetection.boundingBox.width > 0 && newDetection.boundingBox.height > 0) {
                 perception_output.boundingBox = newDetection.boundingBox;
+                measuredDistance = newDetection.distance;  // Get the new measurement
+                newMeasurement = true;
                 distance_filter.init(perception_output.distance);
                 pt.updateBbox(perception_output.boundingBox);
                 pt.detectFeatures();
-                continue;
             }
         }
 
-        perception_output.distance = distance_filter.process(perception_output.distance);
+        // Use the filter properly
+        if (newMeasurement) {
+            // We have a new measurement, so update the filter with it
+            perception_output.distance = distance_filter.process(measuredDistance, true);
+        } else {
+            // No new measurement, just predict based on previous state
+            perception_output.distance = distance_filter.predict();
+    }
+        
+        std::cout << "Distance: " << perception_output.distance << std::endl;
+        
         count++;
         imshow("Camera Feed", frame);
         

@@ -28,6 +28,8 @@ private:
     Mat blob;
     Mat output;
 
+    std::map<int, double> calibratedDistances;
+
     
 
 public:

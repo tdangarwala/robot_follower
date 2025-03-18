@@ -11,11 +11,27 @@ PersonTracker::PersonTracker(Mat& frame, Rect bbox): bounding_box(bbox)
 void PersonTracker::detectFeatures(){
     features.clear();
 
+    std::cout << "detectFeatures " << prev_gray.cols << " " << prev_gray.rows << std::endl;
     Mat roi = prev_gray(bounding_box);
     goodFeaturesToTrack(roi, features, 100, 0.3, 7);
+
+    // Adjust feature coordinates to global frame coordinates
+    for (auto& pt : features) {
+        pt.x += bounding_box.x;
+        pt.y += bounding_box.y;
+    }
 }
 
 void PersonTracker::updateBbox(Rect new_bounding_box){
+
+    // Validate the bounding box before assigning it
+    new_bounding_box.x = std::max(0, new_bounding_box.x);
+    new_bounding_box.y = std::max(0, new_bounding_box.y);
+    
+    // Ensure the box doesn't extend beyond the image boundaries
+    new_bounding_box.width = std::min(new_bounding_box.width, prev_gray.cols - new_bounding_box.x);
+    new_bounding_box.height = std::min(new_bounding_box.height, prev_gray.rows - new_bounding_box.y);
+
     bounding_box = new_bounding_box;
 }
 

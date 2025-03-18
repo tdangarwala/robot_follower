@@ -75,15 +75,17 @@ DetectionOutput PersonDetector::processFrame(Mat& frame) {
     auto box = detectPeople(frame);
 
     Position personOffset;
+    double realDist;
 
-    personOffset = getPersonOffset(frame, box);
-    double realDist = getDistance(box);
+    if(box.width > 0){
+        personOffset = getPersonOffset(frame, box);
+        realDist = getDistance(box);
 
-    rectangle(frame, box, Scalar(0,255,0), 2);
-    
-    putText(frame, std::to_string(realDist), Point(box.x, box.y -10),
-            FONT_HERSHEY_SIMPLEX, 1.5, Scalar(0,255,0),2);
-
+        rectangle(frame, box, Scalar(0,255,0), 2);
+        
+        putText(frame, std::to_string(realDist), Point(box.x, box.y -10),
+                FONT_HERSHEY_SIMPLEX, 1.5, Scalar(0,255,0),2);
+    }
 
     DetectionOutput res = {personOffset, realDist, box};
 
@@ -102,16 +104,22 @@ double PersonDetector::getDistance(const Rect& box) {
     }
     double f = 4.0*1280 / 3.58; //focal length of Logitect C270 camera, will need to change for others based on calibration process
 
-    double pixelWidth = box.width;
+    double pixelHeight = box.height;
 
-    double realWidth = 0.53; //assume average width of person is like 21 in 
+    double realHeight= 1.88; //assume average width of person is like 21 in 
 
 
     //similar triangles math
 
-    double distance = (f * realWidth) / pixelWidth;
+    double theoretical_distance = (f * realHeight) / pixelHeight;
 
-    return distanceFilter.process(distance);
+    return distanceFilter.process(theoretical_distance);
+
+    //interpolate to find closest calibrated values
+
+    auto upper = calibratedDistances.lower_bound(theoretical_distance);
+    auto lower = std::prev(upper);020
 
 }
+
 
