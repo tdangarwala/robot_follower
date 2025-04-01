@@ -16,6 +16,9 @@ int main(){
     
     KalmanDistanceFilter distance_filter(0.1,0.1);
     PersonDetector detector(modelPath,configPath, distance_filter);
+
+    //toggle comment if you need to run calibration routine
+    //detector.calibrateDistance();
     
                             
     VideoCapture cap(0);

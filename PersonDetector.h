@@ -28,12 +28,14 @@ private:
     Mat blob;
     Mat output;
 
-    std::map<int, double> calibratedDistances;
+    std::map<int, double> calibratedDistances; //map of distanace and correction factor
 
     
 
 public:
     PersonDetector(std::string modelPath, std::string configPath, KalmanDistanceFilter dkf);
+
+    void calibrateDistance();
 
     Rect detectPeople(Mat& frame);
 
