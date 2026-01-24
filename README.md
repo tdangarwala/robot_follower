@@ -1,5 +1,7 @@
 # robot_follower
 
+NOTE: This project has been on hold for a while. It will be integrated (eventually) into the self balancing robot project.
+
 Goal: Project to learn real time systems and machine vision technologies. Creating a robot that can follow you around using a webcam, 3D printed chassis and wheels, motor, and Raspberry Pi 4. 
 
 Webcam will be used for object detection (human). 3d Printing will be used to design chassis that webcam and wheels will be mounted to. Motor(s) - one will be used for rotating camera, and the other will be for drivetrain. Raspberry Pi 4 serves as central data processing from webcam input and converting to motor controls output. 
